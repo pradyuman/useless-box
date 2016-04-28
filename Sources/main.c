@@ -2,15 +2,15 @@
 ************************************************************************
  ECE 362 - Mini-Project C Source File - Spring 2016
 ***********************************************************************
-	 	   			 		  			 		  		
- Team ID: < 01 >
+
+Team ID: < 01 >
 
  Project Name: < TAPS >
 
  Team Members:
 
    - Team/Doc Leader: < Tiger Cheng >       Signature: ______________________
-   
+
    - Software Leader: < Pradyuman Vig >     Signature: ______________________
 
    - Interface Leader: < Annan Ma >         Signature: ______________________
@@ -18,10 +18,10 @@
    - Peripheral Leader: < Shichen Lin >     Signature: ______________________
 
 
- Academic Honesty Statement:  In signing above, we hereby certify that we 
+ Academic Honesty Statement:  In signing above, we hereby certify that we
  are the individuals who created this HC(S)12 source file and that we have
- not copied the work of any other student (past or present) while completing 
- it. We understand that if we fail to honor this agreement, we will receive 
+ not copied the work of any other student (past or present) while completing
+ it. We understand that if we fail to honor this agreement, we will receive
  a grade of ZERO and be subject to possible disciplinary action.
 
 ***********************************************************************
@@ -69,14 +69,14 @@
 void delay_10us(int);
 void reset_motor(void);
 
-/*  Variable declarations */ 	   			 		  			 		       
+/*  Variable declarations */
 
 long despos;
 long curpos;
 int wait = 0;;
 int prevdir = 0;
 int reset = 1;
- 
+
 /* LCD COMMUNICATION BIT MASKS */
 #define RS 0x04		// RS pin mask (PTT[2])
 #define RW 0x08		// R/W pin mask (PTT[3])
@@ -90,7 +90,7 @@ int reset = 1;
 #define LINE1 0x80	// LCD line 1 cursor position
 #define LINE2 0xC0	// LCD line 2 cursor position
 
-/*	 	   		
+/*
 ***********************************************************************
  Initializations
 ***********************************************************************
@@ -109,21 +109,18 @@ void  initializations(void) {
 
 /* Disable watchdog timer (COPCTL register) */
   COPCTL = 0x40   ; //COP off; RTI and COP stopped in BDM-mode
-         
-/* Add additional port pin initializations here */
 
-	 	   			 		  			 		  		
 /* Initialize digital I/O port pins */
-   DDRT = 0xff;
-     
-/* Initialize RTI for 2.048 ms interrupt rate */	
+   DDRT = 0xFF;
+
+/* Initialize RTI for 2.048 ms interrupt rate */
 
 /* Initialize TIM Ch 7 (TC7) for periodic interrupts every 1.000 ms
      - enable timer subsystem
      - set channel 7 for output compare
      - set appropriate pre-scale factor and enable counter reset after OC7
      - set up channel 7 to generate 1 ms interrupt rate
-     - initially disable TIM Ch 7 interrupts      
+     - initially disable TIM Ch 7 interrupts
 */
      TIOS = 0x80;
      TSCR1 = 0x80;
@@ -136,13 +133,13 @@ void  initializations(void) {
    - sampling frequency of approximately 100 Hz
    - left-aligned, positive polarity **
    - period register = $FF (yielding a duty cycle range of 0% to 100%,
-     for duty cycle register values of $00 to $FF 
+     for duty cycle register values of $00 to $FF
    - duty register = $00 (motor initially stopped) **
-   
+
  IMPORTANT: Need to set MODRR so that PWM Ch 3 is routed to port pin PT3
-*/ 	
- 	MODRR	 = 0x08; // PT0** used as PWM Ch 3 output 
-	PWME	 = 0x0C; // enable PWM Ch 3, 2 
+*/
+ 	MODRR	 = 0x08; // PT0** used as PWM Ch 3 output
+	PWME	 = 0x0C; // enable PWM Ch 3, 2
 	PWMPOL	 = 0x08; // set active high polarity on ch 3 **
 	PWMCTL	 = 0x20; // concatenate 2&3 (16-bit) CON45:$40 CON23:$20 CON10:$10
 	PWMCAE	 = 0x00; // left-aligned output mode
@@ -160,31 +157,31 @@ void  initializations(void) {
      }
 }
 
-/*	 		  			 		  		
+/*
 ***********************************************************************
  Main
 ***********************************************************************
 */
 
 void main(void) {
-  
+
   DisableInterrupts;
-	initializations(); 		  			 		  		
-	EnableInterrupts;  
-  
+	initializations();
+	EnableInterrupts;
+
   INTCR = 0x40;
   //TIE = 0x80;
 
   for(;;) {
- 
+
   }
-   
+
 
   /* write your code here */
 
- 
+
   /* loop forever */
-   
+
 }  /* do not leave main */
 
 
@@ -207,14 +204,14 @@ void main(void) {
 interrupt 7 void RTI_ISR(void)
 {
   	// clear RTI interrupt flag
-  	CRGFLG = CRGFLG | 0x80; 
+  	CRGFLG = CRGFLG | 0x80;
 
 }
 
 /*
 ***********************************************************************
   TIM interrupt service routine
-  used to initiate ATD samples (on Ch 0 and Ch 1)	 		  			 		  		
+  used to initiate ATD samples (on Ch 0 and Ch 1)
 ***********************************************************************
 */
 
@@ -222,9 +219,9 @@ interrupt 15 void TIM_ISR(void)
 {
 
         // clear TIM CH 7 interrupt flag
- 	TFLG1 = TFLG1 | 0x80; 
+ 	TFLG1 = TFLG1 | 0x80;
   if(curpos != despos){
-    if(curpos < despos){       
+    if(curpos < despos){
        PTT_PTT2 = 0;
     }else{
        PTT_PTT2 = 1;
@@ -234,29 +231,29 @@ interrupt 15 void TIM_ISR(void)
         wait++;
       }else{
         wait = 0;
-        prevdir = PTT_PTT2;           
+        prevdir = PTT_PTT2;
       }
       return;
-    }else{       
+    }else{
       PTT_PTT3 = !PTT_PTT3;
       if(PTT_PTT2){
         curpos -= PTT_PTT3;
-      }else{       
+      }else{
         curpos += PTT_PTT3;
       }
-    }  
+    }
   }else{
     if(wait < 2048) {
-      wait++;      
+      wait++;
     }
-  }              
+  }
 }
 
 //IRQ interrupt
 
-interrupt 6 void IRQ_ISR(void) 
+interrupt 6 void IRQ_ISR(void)
 {
-  reset = 0;       
+  reset = 0;
 }
 
 
@@ -273,16 +270,15 @@ void reset_motor(void)
     PTT_PTT3 = 0;
     delay_10us(5);
   }
-  
+
   PTT_PTT2 = 0;
   for(i = 0;i < 3200;i++){
     PTT_PTT3 = 1;
     delay_10us(5);
     PTT_PTT3 = 0;
-    delay_10us(5);    
+    delay_10us(5);
   }
-  
-  
+
   reset = 1;
   while(reset == 1){
     PTT_PTT2 = 1;
@@ -291,7 +287,7 @@ void reset_motor(void)
     PTT_PTT3 = 0;
     delay_10us(50);
   }
-  
+
   INTCR = 0x00;
   curpos = 0;
 }
