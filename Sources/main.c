@@ -285,12 +285,12 @@ interrupt 6 void IRQ_ISR(void) {
 void disp(void) {
   int i;
 
-  chgline(0x80);
+  chgline(LINE1);
   pmsglcd("Hello World!   ");
   if (dest_switch) print_c(dest_switch + 0x30);
   else print_c(0x20);
 
-  chgline(0xC0);
+  chgline(LINE2);
   for (i = 0; i < 16; i++) {
     if (i == (curpos - OFFSET) * 16 / 26100) print_c(0xFF);
     else if (!(i % 2) && (state & 1 << i / 2)) print_c(i / 2 + 1 + 0x30);
@@ -307,7 +307,7 @@ void shiftout(char x) {
   while(i--); // wait for SPI data to shift out
 }
 
-/* Delay for approximately 2 ms */
+/* Delay for LCD to update */
 void lcdwait(void) {
 	int i = 1000;
 	while(i--);
