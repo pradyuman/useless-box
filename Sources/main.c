@@ -60,22 +60,29 @@ Date: < ? >  Name: < ? >   Update: < ? >
 ***********************************************************************
 */
 
-#include <hidef.h>      /* common defines and macros */
-#include "derivative.h"      /* derivative-specific definitions */
+#include <hidef.h>
 #include <mc9s12c32.h>
 
-/* User Defined Functions */
+#include "derivative.h"
 
+/* User Defined Functions */
 void delay_10us(int);
 void reset_motor(void);
 
 /*  Variable declarations */
-
 long despos;
 long curpos;
-int wait = 0;;
+int all_zero = 1;
+int wait = 0;
 int prevdir = 0;
 int reset = 1;
+
+/* USELESS BOX PARAMETERS TO SAVE CPU CYCLES */
+long sw[8] = {900, 4500, 8100, 11700, 15300, 18900, 22500, 26100}; //sw[i] = 900+3600*i
+long sensor[16] = {1800, 1800, 3600, 5400, 7200, 9000, 10800,
+                   12600, 14400, 16200, 18000, 19800, 21600,
+                   23400, 25200, 25200}; //sensor[i] = 1800*i
+#define OFFSET 0
 
 /* LCD COMMUNICATION BIT MASKS */
 #define RS 0x04		// RS pin mask (PTT[2])
@@ -90,15 +97,9 @@ int reset = 1;
 #define LINE1 0x80	// LCD line 1 cursor position
 #define LINE2 0xC0	// LCD line 2 cursor position
 
-/*
-***********************************************************************
-Initializations
-***********************************************************************
-*/
-
+/* Initializations */
 void initializations(void) {
-
-  /* Set the PLL speed (bus clock = 24 MHz) */
+  // Set the PLL speed (bus clock = 24 MHz)
   CLKSEL &= 0x80; // disengage PLL from system
   PLLCTL |= 0x40; // turn on PLL
   SYNR = 0x02; // set PLL multiplier
@@ -110,7 +111,9 @@ void initializations(void) {
   COPCTL = 0x40; //COP off; RTI and COP stopped in BDM-mode
 
   // Initialize digital I/O port pins
-  DDRT = 0xFF;
+  ATDDIEN = 0xFF; //Digital Input
+  DDRAD = 0xFC; //Port AD direction
+  DDRT = 0x7F; //Port T direction
 
   // Initialize TIM Ch 7 (TC7) for periodic interrupts every 30 us
   TIOS = 0x80; //set channel 7 for output compare
@@ -145,16 +148,10 @@ void initializations(void) {
 
   INTCR = 0x00; // Disable Enable IRQ interrupts
 
-  //Enable motor
-  PTT_PTT6 = 1;
+  PTT_PTT6 = 1; // Enable motor
 }
 
-/*
-***********************************************************************
-Main
-***********************************************************************
-*/
-
+/* Main */
 void main(void) {
   DisableInterrupts;
 	initializations();
@@ -162,43 +159,14 @@ void main(void) {
   reset_motor();
 
   for(;;) {
-
+    all_zero = 1;
+    sample_switches();
+    if (all_zero) sample_sensors();
   }
-
-
-  /* write your code here */
-
-
-  /* loop forever */
-
-}  /* do not leave main */
-
-/*
-***********************************************************************
-RTI interrupt service routine: RTI_ISR
-
-Initialized for 2.048 ms interrupt rate
-
-Samples state of pushbuttons (PAD7 = left, PAD6 = right)
-
-If change in state from "high" to "low" detected, set pushbutton flag
-leftpb (for PAD7 H -> L), rghtpb (for PAD6 H -> L)
-Recall that pushbuttons are momentary contact closures to ground
-***********************************************************************
-*/
-
-interrupt 7 void RTI_ISR(void) {
-  // clear RTI interrupt flag
-  CRGFLG |= 0x80;
 }
 
-/*
-***********************************************************************
-TIM interrupt service routine
-used to initiate ATD samples (on Ch 0 and Ch 1)
-***********************************************************************
-*/
 
+/* Step Motor Driver */
 interrupt 15 void TIM_ISR(void) {
   // clear TIM CH 7 interrupt flag
  	TFLG1 |= 0x80;
@@ -226,12 +194,44 @@ interrupt 15 void TIM_ISR(void) {
   }
 }
 
-//IRQ interrupt
+/* Switch Sampling */
+int sample_switch() {
+  int i;
+  for (i = 0; i < 8; i++) {
+    PTAD_PTAD5 = i & 0b100;
+    PTAD_PTAD6 = i & 0b010;
+    PTAD_PTAD7 = i & 0b001;
+
+    if (PTT_PTT7) {
+      all_zero = 0;
+      update_destination(sw[i] + OFFSET);
+    }
+  }
+}
+
+/* Sensor Sampling */
+void sample_sensor(void) {
+  int i;
+  for (i = 0; i < 8; i++) {
+    PTAD_PTAD2 = i & 0b100;
+    PTAD_PTAD3 = i & 0b010;
+    PTAD_PTAD4 = i & 0b001;
+
+    if (PTAD_PTAD0) update_destination(sensor[i] + OFFSET);
+    if (PTAD_PTAD1) update_destination(sensor[i + 8] + OFFSET);
+}
+
+/* Update Destination */
+void update_destination(int d) {
+  //destination = min(abs(curr - i), destination)
+}
+
+/* Clears reset flag */
 interrupt 6 void IRQ_ISR(void) {
   reset = 0;
 }
 
-//Reset motor to rest near calibration button
+/* Reset motor to rest near calibration button */
 void reset_motor(void) {
   int i;
   INTCR = 0x40;
@@ -268,7 +268,7 @@ void reset_motor(void) {
   curpos = 0;
 }
 
-//Delay around 10us
+/* Delay around 10us */
 void delay_10us(int time) {
   int i;
   for(i = 0; i < 18 * time; i++);
