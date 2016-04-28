@@ -70,6 +70,14 @@ void sample_switches(void);
 void sample_sensors(void);
 void update_destination(long location);
 void servo_driver(void);
+void disp(void);
+void shiftout(char x);
+void lcdwait(void);
+void send_byte(char x);
+void send_i(char x);
+void chgline(char x);
+void print_c(char x);
+void pmsglcd(char[]);
 void reset_motor(void);
 void delay_10us(int);
 
@@ -81,12 +89,14 @@ long wait = 0;
 int prevdir = 0;
 int reset = 1;
 int fservo = 0;
+int dest_switch = 0;
 
 /* USELESS BOX PARAMETERS TO SAVE CPU CYCLES */
 long sw[8] = {900, 4500, 8100, 11700, 15300, 18900, 22500, 26100}; //sw[i] = 900+3600*i
 long sensor[16] = {1800, 1800, 3600, 5400, 7200, 9000, 10800,
                    12600, 14400, 16200, 18000, 19800, 21600,
                    23400, 25200, 25200}; //sensor[i] = 1800*i
+char state = 0;
 #define OFFSET 0
 
 /* LCD COMMUNICATION BIT MASKS */
@@ -166,9 +176,9 @@ void main(void) {
   servo_driver();
   for(;;) {
     /*
-    all_zero = 1;
-    sample_switches();
-    if (all_zero) sample_sensors();
+      all_zero = 1;
+      sample_switches();
+      if (all_zero) sample_sensors();
     */
   }
 }
@@ -195,12 +205,12 @@ interrupt 15 void TIM_ISR(void) {
       curpos += PTT_PTT1;
     }
   } else (wait++ < 40000);
-    /*
+  /*
     {
-  } else (!all_zero && fservo) {
-      // servo_driver();
-  }
-    */
+    } else (!all_zero && fservo) {
+    // servo_driver();
+    }
+  */
   // clear TIM CH 7 interrupt flag
   TFLG1 |= 0x80;
 }
@@ -221,15 +231,18 @@ void servo_driver(void) {
 /* Switch Sampling */
 void sample_switches(void) {
   int i;
+  state = 0;
   for (i = 0; i < 8; i++) {
     PTAD_PTAD5 = i & 0b100;
     PTAD_PTAD6 = i & 0b010;
     PTAD_PTAD7 = i & 0b001;
 
     if (PTT_PTT7) {
+      state |= 1 << i;
       fservo = 1;
       all_zero = 0;
       update_destination(sw[i] + OFFSET);
+      dest_switch = i + 1;
     }
   }
 }
@@ -254,6 +267,7 @@ void update_destination(long loc) {
 
   if (all_zero) {
     despos = loc;
+    dest_switch = 0;
   } else {
     if (diff < 0) diff *= -1;
     if (newdiff < 0) newdiff *= -1;
@@ -264,6 +278,70 @@ void update_destination(long loc) {
 /* Clears reset flag */
 interrupt 6 void IRQ_ISR(void) {
   reset = 0;
+}
+
+void disp(void) {
+  int i;
+
+  chgline(0x80);
+  pmsglcd("Hello World!   ");
+  if (dest_switch) print_c(dest_switch + 0x30);
+  else print_c(0x20);
+
+  chgline(0xC0);
+  for (i = 0; i < 16; i++) {
+    if (i == (curpos - OFFSET) * 16 / 26100) print_c(0xFF);
+    else if (!(i % 2) && (state & 1 << i / 2)) print_c(i / 2 + 1 + 0x30);
+    else print_c(0x20);
+  }
+}
+
+/* Transmits the character x to external shift register using the SPI. */
+void shiftout(char x) {
+  int i = 10;
+  while(!SPISR_SPTEF); // read the SPTEF bit, continue if bit is 1
+  SPIDR = x; // write data to SPI data register
+
+  while(i--); // wait for SPI data to shift out
+}
+
+/* Delay for approximately 2 ms */
+void lcdwait(void) {
+	int i = 1000;
+	while(i--);
+}
+
+/* send_byte: writes character x to the LCD */
+void send_byte(char x) {
+  shiftout(x);
+  PTT_PTT6 = 0;
+  PTT_PTT6 = 1;
+  PTT_PTT6 = 0;
+  lcdwait();
+}
+
+/* send_i: Sends instruction byte x to LCD */
+void send_i(char x) {
+  PTT_PTT4 = 0; // set the register select line low (instruction data)
+  send_byte(x);
+}
+
+/* chgline: Move LCD cursor to position x */
+void chgline(char x) {
+	send_i(CURMOV);
+	send_i(x);
+}
+
+/* Print (single) character x on LCD */
+void print_c(char x) {
+	PTT_PTT4 = 1;
+	send_byte(x);
+}
+
+/* Print character string str[] on LCD */
+void pmsglcd(char str[]) {
+	int i = 0;
+	while(str[i] != '\0') print_c(str[i++]);
 }
 
 /* Reset motor to rest near calibration button */
