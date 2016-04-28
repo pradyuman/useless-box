@@ -226,10 +226,18 @@ void sample_sensors(void) {
   }
 }
 
+/* Update Destination */
 void update_destination(long loc) {
-  long temp = curpos - loc;
-  temp = temp < 0 ? temp * -1 : temp;
-  despos = despos > temp ? loc : despos;
+  long diff = curpos - despos;
+  long newdiff = curpos - loc;
+
+  if (all_zero) {
+    despos = loc;
+  } else {
+    if (diff < 0) diff *= -1;
+    if (newdiff < 0) newdiff *= -1;
+    if (diff > newdiff) despos = loc;
+  }
 }
 
 /* Clears reset flag */
