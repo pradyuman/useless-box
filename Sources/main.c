@@ -66,8 +66,12 @@ Date: < ? >  Name: < ? >   Update: < ? >
 #include "derivative.h"
 
 /* User Defined Functions */
-void delay_10us(int);
+void sample_switches(void);
+void sample_sensors(void);
+void update_destination(long location);
+
 void reset_motor(void);
+void delay_10us(int);
 
 /*  Variable declarations */
 long despos;
@@ -195,7 +199,7 @@ interrupt 15 void TIM_ISR(void) {
 }
 
 /* Switch Sampling */
-int sample_switch() {
+void sample_switches(void) {
   int i;
   for (i = 0; i < 8; i++) {
     PTAD_PTAD5 = i & 0b100;
@@ -210,7 +214,7 @@ int sample_switch() {
 }
 
 /* Sensor Sampling */
-void sample_sensor(void) {
+void sample_sensors(void) {
   int i;
   for (i = 0; i < 8; i++) {
     PTAD_PTAD2 = i & 0b100;
@@ -219,11 +223,13 @@ void sample_sensor(void) {
 
     if (PTAD_PTAD0) update_destination(sensor[i] + OFFSET);
     if (PTAD_PTAD1) update_destination(sensor[i + 8] + OFFSET);
+  }
 }
 
-/* Update Destination */
-void update_destination(int d) {
-  //destination = min(abs(curr - i), destination)
+void update_destination(long loc) {
+  long temp = curpos - loc;
+  temp = temp < 0 ? temp * -1 : temp;
+  despos = despos > temp ? loc : despos;
 }
 
 /* Clears reset flag */
