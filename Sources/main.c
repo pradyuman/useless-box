@@ -179,6 +179,7 @@ void main(void) {
       all_zero = 1;
       sample_switches();
       if (all_zero) sample_sensors();
+      disp();
     */
   }
 }
@@ -280,6 +281,7 @@ interrupt 6 void IRQ_ISR(void) {
   reset = 0;
 }
 
+/* Display to LCD */
 void disp(void) {
   int i;
 
@@ -314,15 +316,15 @@ void lcdwait(void) {
 /* send_byte: writes character x to the LCD */
 void send_byte(char x) {
   shiftout(x);
-  PTT_PTT6 = 0;
-  PTT_PTT6 = 1;
-  PTT_PTT6 = 0;
+  PTT_PTT4 = 0;
+  PTT_PTT4 = 1;
+  PTT_PTT4 = 0;
   lcdwait();
 }
 
 /* send_i: Sends instruction byte x to LCD */
 void send_i(char x) {
-  PTT_PTT4 = 0; // set the register select line low (instruction data)
+  PTT_PTT2 = 0; // set the register select line low (instruction data)
   send_byte(x);
 }
 
@@ -334,7 +336,7 @@ void chgline(char x) {
 
 /* Print (single) character x on LCD */
 void print_c(char x) {
-	PTT_PTT4 = 1;
+	PTT_PTT2 = 1;
 	send_byte(x);
 }
 
