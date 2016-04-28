@@ -69,7 +69,7 @@ Date: < ? >  Name: < ? >   Update: < ? >
 void sample_switches(void);
 void sample_sensors(void);
 void update_destination(long location);
-
+void servo_driver(void);
 void reset_motor(void);
 void delay_10us(int);
 
@@ -77,9 +77,10 @@ void delay_10us(int);
 long despos;
 long curpos;
 int all_zero = 1;
-int wait = 0;
+long wait = 0;
 int prevdir = 0;
 int reset = 1;
+int fservo = 0;
 
 /* USELESS BOX PARAMETERS TO SAVE CPU CYCLES */
 long sw[8] = {900, 4500, 8100, 11700, 15300, 18900, 22500, 26100}; //sw[i] = 900+3600*i
@@ -142,8 +143,8 @@ void initializations(void) {
 	PWMPOL = 0x08; // set active high polarity on ch 3 **
 	PWMCTL = 0x20; // concatenate 2&3 (16-bit) CON45:$40 CON23:$20 CON10:$10
 	PWMCAE = 0x00; // left-aligned output mode
-	PWMPER2	= 0xFF; // set maximum 16-bit period (Higher Byte) **
-	PWMPER3	= 0xFF; // set maximum 16-bit period
+	PWMPER2	= 0x3A; // set maximum 16-bit period (Higher Byte) **
+	PWMPER3	= 0x98; // set maximum 16-bit period
 	PWMDTY2	= 0x00; // initially clear DUTY register H
 	PWMDTY3	= 0x00; // initially clear DUTY register
 	PWMCLK = 0x00; // select Clock B for Ch 3
@@ -160,29 +161,29 @@ void main(void) {
   DisableInterrupts;
 	initializations();
 	EnableInterrupts;
-  reset_motor();
+  //reset_motor();
 
+  servo_driver();
   for(;;) {
+    /*
     all_zero = 1;
     sample_switches();
     if (all_zero) sample_sensors();
+    */
   }
 }
 
 
 /* Step Motor Driver */
 interrupt 15 void TIM_ISR(void) {
-  // clear TIM CH 7 interrupt flag
- 	TFLG1 |= 0x80;
   if (curpos != despos) {
     PTT_PTT5 = curpos < despos ? 0 : 1;
 
     if (prevdir != PTT_PTT5) {
-      if (wait++ >= 2048) {
+      if (wait++ >= 40000) {
         wait = 0;
         prevdir = PTT_PTT5;
       }
-
       return;
     }
 
@@ -193,9 +194,28 @@ interrupt 15 void TIM_ISR(void) {
     } else {
       curpos += PTT_PTT1;
     }
-  } else {
-    if (wait++ < 2048);
+  } else (wait++ < 40000);
+    /*
+    {
+  } else (!all_zero && fservo) {
+      // servo_driver();
   }
+    */
+  // clear TIM CH 7 interrupt flag
+  TFLG1 |= 0x80;
+}
+
+/* Servo Driver */
+void servo_driver(void) {
+  int i;
+  fservo = 0;
+  PWMDTY2 = 0x09; //0x0A;
+  PWMDTY3 = 0xF6; //0x28;
+  //sample_switches();
+  for (i = 0; i < 100; i++) delay_10us(1000);
+  PWMDTY2 = all_zero ? 0x02 : 0x08;
+  PWMDTY3 = all_zero ? 0xEE : 0xCA;
+  for (i = 0; i < 100; i++) delay_10us(1000);
 }
 
 /* Switch Sampling */
@@ -207,6 +227,7 @@ void sample_switches(void) {
     PTAD_PTAD7 = i & 0b001;
 
     if (PTT_PTT7) {
+      fservo = 1;
       all_zero = 0;
       update_destination(sw[i] + OFFSET);
     }
@@ -252,8 +273,8 @@ void reset_motor(void) {
   TIE = 0x00;
 
   reset = 1;
+  PTT_PTT5 = 1;
   while (reset) {
-    PTT_PTT5 = 1;
     PTT_PTT1 = 1;
     delay_10us(5);
     PTT_PTT1 = 0;
@@ -269,11 +290,11 @@ void reset_motor(void) {
   }
 
   reset = 1;
+  PTT_PTT5 = 1;
   while (reset) {
-    PTT_PTT5 = 1;
     PTT_PTT1 = 1;
     delay_10us(50);
-    PTT_PTT5 = 0;
+    PTT_PTT1 = 0;
     delay_10us(50);
   }
 
