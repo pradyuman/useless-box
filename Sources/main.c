@@ -1,3 +1,65 @@
+/*
+************************************************************************
+ ECE 362 - Mini-Project C Source File - Spring 2016
+***********************************************************************
+	 	   			 		  			 		  		
+ Team ID: < 01 >
+
+ Project Name: < TAPS >
+
+ Team Members:
+
+   - Team/Doc Leader: < Tiger Cheng >       Signature: ______________________
+   
+   - Software Leader: < Pradyuman Vig >     Signature: ______________________
+
+   - Interface Leader: < Annan Ma >         Signature: ______________________
+
+   - Peripheral Leader: < Shichen Lin >     Signature: ______________________
+
+
+ Academic Honesty Statement:  In signing above, we hereby certify that we 
+ are the individuals who created this HC(S)12 source file and that we have
+ not copied the work of any other student (past or present) while completing 
+ it. We understand that if we fail to honor this agreement, we will receive 
+ a grade of ZERO and be subject to possible disciplinary action.
+
+***********************************************************************
+
+ The objective of this Mini-Project is to .... < ? >
+
+
+***********************************************************************
+
+ List of project-specific success criteria (functionality that will be
+ demonstrated):
+
+ 1.
+
+ 2.
+
+ 3.
+
+ 4.
+
+ 5.
+
+***********************************************************************
+
+  Date code started: < 4/23/2016 >
+
+  Update history (add an entry every time a significant change is made):
+
+  Date: < ? >  Name: < ? >   Update: < ? >
+
+  Date: < ? >  Name: < ? >   Update: < ? >
+
+  Date: < ? >  Name: < ? >   Update: < ? >
+
+
+***********************************************************************
+*/
+
 #include <hidef.h>      /* common defines and macros */
 #include "derivative.h"      /* derivative-specific definitions */
 #include <mc9s12c32.h>
@@ -68,16 +130,29 @@ void  initializations(void) {
      TSCR2 = 0x08;
      TIE = 0x00;
      TC7 = 720;
-/*    
-// PWM Setting
-     PWMPRCLK = 0x08;
-     PWME = 0x01;
-     PWMPOL = 0x01;
-     PWMSCLA = 0x08;
-     PWMCLK = 0x01; 
-     DDRP = 0x01;
-*/
-
+/*
+ Initialize the PWM unit to produce a signal with the following
+ characteristics on PWM output channel 3:
+   - sampling frequency of approximately 100 Hz
+   - left-aligned, positive polarity **
+   - period register = $FF (yielding a duty cycle range of 0% to 100%,
+     for duty cycle register values of $00 to $FF 
+   - duty register = $00 (motor initially stopped) **
+   
+ IMPORTANT: Need to set MODRR so that PWM Ch 3 is routed to port pin PT3
+*/ 	
+ 	MODRR	 = 0x08; // PT0** used as PWM Ch 3 output 
+	PWME	 = 0x0C; // enable PWM Ch 3, 2 
+	PWMPOL	 = 0x08; // set active high polarity on ch 3 **
+	PWMCTL	 = 0x20; // concatenate 2&3 (16-bit) CON45:$40 CON23:$20 CON10:$10
+	PWMCAE	 = 0x00; // left-aligned output mode
+	PWMPER2	 = 0xFF; // set maximum 16-bit period (Higher Byte) **
+	PWMPER3	 = 0xFF; // set maximum 16-bit period
+	PWMDTY2	 = 0x00; // initially clear DUTY register H
+	PWMDTY3	 = 0x00; // initially clear DUTY register
+	PWMCLK	 = 0x00; // select Clock B for Ch 3
+	PWMPRCLK = 0x40; // set Clock B Prescalar = 1.5 MHz (prescaler = 16) rate
+                     // needs to count to 15000 for 100 Hz **??
 // IRQ interrupt setting
      INTCR = 0x00;
      asm{
