@@ -91,6 +91,8 @@ char prevdir = 0;
 char reset = 1;
 char fservo = 0;
 int dest_switch = 0;
+int display = 1000;
+int sum = 0;
 
 /* USELESS BOX PARAMETERS TO SAVE CPU CYCLES */
 long sw[8] = {900, 4500, 8100, 11700, 15300, 18900, 22500, 26100}; //sw[i] = 900+3600*i
@@ -190,12 +192,14 @@ void main(void) {
 	EnableInterrupts;
   //reset_motor();
   curpos = 3000;
+  TIE = 0x80;
 
   for(;;) {
     all_zero = 1;
-    set_speed();
+    //set_speed();
     sample_switches();
     if (all_zero) sample_sensors();
+    //if (!display--) disp();
     disp();
   }
 }
@@ -211,6 +215,8 @@ interrupt 15 void TIM_ISR(void) {
         wait = 0;
         prevdir = PTT_PTT6;
       }
+
+      TFLG1 |= 0x80;
       return;
     }
 
@@ -238,19 +244,24 @@ void servo_driver(void) {
   sample_switches();
   PWMDTY2 = all_zero ? 0x02 : 0x08;
   PWMDTY3 = all_zero ? 0xEE : 0xCA;
-  for (i = 0; i < 100; i++) delay_10us(1000);
+  for (i = 0; i < 100; i++) delay_10us(100);
 }
 
 /* Switch Sampling */
 void sample_switches(void) {
-  int i;
+  int i, c;
   state = 0;
+  sum = 0;
   for (i = 0; i < 8; i++) {
     PTAD_PTAD5 = (i & 4) >> 2;
     PTAD_PTAD6 = (i & 2) >> 1;
     PTAD_PTAD7 = (i & 1) >> 0;
 
+    c = 100;
+    while(c--);
+
     if (PTT_PTT7) {
+      sum++;
       state |= 1 << i;
       fservo = 1;
       all_zero = 0;
@@ -289,10 +300,12 @@ void update_destination(long loc) {
   if (all_zero) {
     despos = loc;
     dest_switch = 0;
+  } else if (sum <= 1) {
+    despos = loc;
   } else {
     if (diff < 0) diff *= -1;
     if (newdiff < 0) newdiff *= -1;
-    if (diff > newdiff) despos = loc;
+    if (diff >= newdiff) despos = loc;
   }
 }
 
@@ -305,6 +318,7 @@ interrupt 6 void IRQ_ISR(void) {
 void disp(void) {
   int i;
 
+  display = 1000;
   chgline(LINE1);
   pmsglcd("Hello World!   ");
   if (dest_switch) print_c(dest_switch + 0x30);
