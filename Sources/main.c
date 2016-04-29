@@ -152,17 +152,17 @@ void initializations(void) {
 
     IMPORTANT: Need to set MODRR so that PWM Ch 3 is routed to port pin PT3
   */
- 	MODRR = 0x08; // PT0** used as PWM Ch 3 output
-	PWME = 0x0C; // enable PWM Ch 3, 2
-	PWMPOL = 0x08; // set active high polarity on ch 3 **
-	PWMCTL = 0x20; // concatenate 2&3 (16-bit) CON45:$40 CON23:$20 CON10:$10
-	PWMCAE = 0x00; // left-aligned output mode
-	PWMPER2	= 0x3A; // set maximum 16-bit period (Higher Byte) **
-	PWMPER3	= 0x98; // set maximum 16-bit period
-	PWMDTY2	= 0x00; // initially clear DUTY register H
-	PWMDTY3	= 0x00; // initially clear DUTY register
-	PWMCLK = 0x00; // select Clock B for Ch 3
-	PWMPRCLK = 0x40; // set Clock B Prescalar = 1.5 MHz (prescaler = 16) rate
+  MODRR = 0x08; // PT0** used as PWM Ch 3 output
+  PWME = 0x0C; // enable PWM Ch 3, 2
+  PWMPOL = 0x08; // set active high polarity on ch 3 **
+  PWMCTL = 0x20; // concatenate 2&3 (16-bit) CON45:$40 CON23:$20 CON10:$10
+  PWMCAE = 0x00; // left-aligned output mode
+  PWMPER2	= 0x3A; // set maximum 16-bit period (Higher Byte) **
+  PWMPER3	= 0x98; // set maximum 16-bit period
+  PWMDTY2	= 0x00; // initially clear DUTY register H
+  PWMDTY3	= 0x00; // initially clear DUTY register
+  PWMCLK = 0x00; // select Clock B for Ch 3
+  PWMPRCLK = 0x40; // set Clock B Prescalar = 1.5 MHz (prescaler = 16) rate
 
   /* SPI setting and LCD initialization*/
   SPICR1 = 0x50;
@@ -183,8 +183,8 @@ void initializations(void) {
 /* Main */
 void main(void) {
   DisableInterrupts;
-	initializations();
-	EnableInterrupts;
+  initializations();
+  EnableInterrupts;
 
   chgline(LINE1);
   pmsglcd("Hello World!");
@@ -334,8 +334,8 @@ void shiftout(char x) {
 
 /* Delay for LCD to update */
 void lcdwait(void) {
-	int i = 1000;
-	while(i--);
+  int i = 1000;
+  while(i--);
 }
 
 /* Write character x to LCD */
