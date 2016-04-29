@@ -168,7 +168,6 @@ void initializations(void) {
 	PWMDTY3	= 0x00; // initially clear DUTY register
 	PWMCLK = 0x00; // select Clock B for Ch 3
 	PWMPRCLK = 0x40; // set Clock B Prescalar = 1.5 MHz (prescaler = 16) rate
-  // needs to count to 15000 for 100 Hz **??
 
   /* SPI setting and LCD initialization*/
   SPICR1 = 0x50;
