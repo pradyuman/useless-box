@@ -71,7 +71,7 @@ void sample_sensors(void);
 void set_speed(void);
 void update_destination(long location);
 void servo_driver(void);
-void disp(void);
+void display(void);
 void shiftout(char x);
 void lcdwait(void);
 void send_byte(char x);
@@ -90,7 +90,6 @@ int all_zero = 1;
 long wait = 0;
 char prevdir = 0;
 char reset = 1;
-char fservo = 0;
 int dest_switch = 0;
 int sum = 0;
 
@@ -100,7 +99,7 @@ long sensor[16] = {1800, 1800, 3600, 5400, 7200, 9000, 10800,
                    12600, 14400, 16200, 18000, 19800, 21600,
                    23400, 25200, 25200}; //sensor[i] = 1800*i
 char state = 0;
-#define OFFSET 0
+#define OFFSET -400
 
 /* LCD COMMUNICATION BIT MASKS */
 #define RS 0x04		// RS pin mask (PTT[2])
@@ -129,7 +128,7 @@ void initializations(void) {
   COPCTL = 0x40; //COP off; RTI and COP stopped in BDM-mode
 
   // Initialize digital I/O port pins
-  ATDDIEN = 0xFF; //Digital Input
+  ATDDIEN = 0xFE; //Digital Input
   DDRAD = 0xFC; //Port AD direction
   DDRT = 0x7F; //Port T direction
 
@@ -189,25 +188,30 @@ void main(void) {
   DisableInterrupts;
 	initializations();
 	EnableInterrupts;
+
+  chgline(LINE1);
+  pmsglcd("Hello World!");
+  chgline(LINE2);
+  pmsglcd("Calibrating...");
   calibrate_motor();
 
   for(;;) {
     all_zero = 1;
-    // set_speed();
+    set_speed();
     sample_switches();
-    if (all_zero) sample_sensors();
-    disp();
+    //if (all_zero) sample_sensors();
+    display();
   }
 }
 
 
 /* Step Motor Driver */
 interrupt 15 void TIM_ISR(void) {
-  if (curpos != despos) {
+  if (curpos != despos && !all_zero) {
     PTT_PTT6 = curpos < despos ? 0 : 1;
 
     if (prevdir != PTT_PTT6) {
-      if (wait++ >= 40000) {
+      if (wait++ >= 10000) {
         wait = 0;
         prevdir = PTT_PTT6;
       }
@@ -220,9 +224,10 @@ interrupt 15 void TIM_ISR(void) {
 
     if (PTT_PTT6) curpos -= PTT_PTT1;
     else curpos += PTT_PTT1;
-  } else if (!all_zero && fservo) {
+  } else if (!all_zero) {
     servo_driver();
-  } else if (wait < 40000) {
+    sample_switches();
+  } else {
     wait++;
   }
 
@@ -233,36 +238,41 @@ interrupt 15 void TIM_ISR(void) {
 /* Servo Driver */
 void servo_driver(void) {
   int i;
-  fservo = 0;
   PWMDTY2 = 0x09; //0x0A;
   PWMDTY3 = 0xF6; //0x28;
   for (i = 0; i < 100; i++) delay_10us(100);
-  PWMDTY2 = !--sum ? 0x02 : 0x08;
-  PWMDTY3 = !sum ? 0xEE : 0xCA;
+  PWMDTY2 = !(sum - 1) ? 0x02 : 0x05;
+  PWMDTY3 = !(sum - 1) ? 0xEE : 0xDC;
   for (i = 0; i < 100; i++) delay_10us(100);
 }
 
 /* Switch sampling */
 void sample_switches(void) {
-  int i, c;
+  int i,dis;
   state = 0;
   sum = 0;
+  dest_switch = 0;
   for (i = 0; i < 8; i++) {
     PTAD_PTAD5 = (i & 4) >> 2;
     PTAD_PTAD6 = (i & 2) >> 1;
     PTAD_PTAD7 = (i & 1) >> 0;
 
-    c = 100;
-    while(c--);
+    delay_10us(3);
 
     if (PTT_PTT7) {
       sum++;
       state |= 1 << i;
-      fservo = 1;
-      all_zero = 0;
       update_destination(sw[i] + OFFSET);
       dest_switch = i + 1;
     }
+  }
+
+  if (!sum) {
+    all_zero = 1;
+    PWMDTY2 = 0x02;
+    PWMDTY3 = 0xEE;
+  } else {
+    all_zero = 0;
   }
 }
 
@@ -276,7 +286,6 @@ void sample_sensors(void) {
 
     if (PTAD_PTAD0) update_destination(sensor[i] + OFFSET);
     if (PTAD_PTAD1) update_destination(sensor[i + 8] + OFFSET);
-    fservo = 1;
   }
 }
 
@@ -284,7 +293,7 @@ void sample_sensors(void) {
 void set_speed(void) {
   ATDCTL5 = 0x10;
   while(!ATDSTAT0_SCF);
-  TC7 = 720 + ATDDR0H * 2280 / 255;
+  TC7 = 720 + ATDDR0H * 10;
 }
 
 /* Update destination */
@@ -292,10 +301,7 @@ void update_destination(long loc) {
   long diff = curpos - despos;
   long newdiff = curpos - loc;
 
-  if (all_zero) {
-    despos = loc;
-    dest_switch = 0;
-  } else if (sum <= 1) {
+  if (sum <= 1) {
     despos = loc;
   } else {
     if (diff < 0) diff *= -1;
@@ -305,7 +311,7 @@ void update_destination(long loc) {
 }
 
 /* Display to LCD */
-void disp(void) {
+void display(void) {
   int i;
 
   chgline(LINE1);
@@ -380,6 +386,8 @@ void calibrate_motor(void) {
   int i;
   TIE = 0x00;
   INTCR = 0x40;
+  PWMDTY2 = 0x02;
+  PWMDTY3 = 0xEE;
 
   reset = 1;
   PTT_PTT6 = 1;
