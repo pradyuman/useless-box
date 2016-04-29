@@ -92,7 +92,6 @@ char prevdir = 0;
 char reset = 1;
 char fservo = 0;
 int dest_switch = 0;
-int display = 1000;
 int sum = 0;
 
 /* USELESS BOX PARAMETERS TO SAVE CPU CYCLES */
@@ -197,7 +196,6 @@ void main(void) {
     // set_speed();
     sample_switches();
     if (all_zero) sample_sensors();
-    //if (!display--) disp();
     disp();
   }
 }
@@ -244,7 +242,7 @@ void servo_driver(void) {
   for (i = 0; i < 100; i++) delay_10us(100);
 }
 
-/* Switch Sampling */
+/* Switch sampling */
 void sample_switches(void) {
   int i, c;
   state = 0;
@@ -268,7 +266,7 @@ void sample_switches(void) {
   }
 }
 
-/* Sensor Sampling */
+/* Sensor sampling */
 void sample_sensors(void) {
   int i;
   for (i = 0; i < 8; i++) {
@@ -282,14 +280,14 @@ void sample_sensors(void) {
   }
 }
 
-/* Set Speed of Step Motor */
+/* Set speed of step motor */
 void set_speed(void) {
   ATDCTL5 = 0x10;
   while(!ATDSTAT0_SCF);
   TC7 = 720 + ATDDR0H * 2280 / 255;
 }
 
-/* Update Destination */
+/* Update destination */
 void update_destination(long loc) {
   long diff = curpos - despos;
   long newdiff = curpos - loc;
@@ -310,7 +308,6 @@ void update_destination(long loc) {
 void disp(void) {
   int i;
 
-  display = 1000;
   chgline(LINE1);
   pmsglcd("Hello World!   ");
   if (dest_switch) print_c(dest_switch + 0x30);
@@ -339,7 +336,7 @@ void lcdwait(void) {
 	while(i--);
 }
 
-/* send_byte: writes character x to the LCD */
+/* Write character x to LCD */
 void send_byte(char x) {
   shiftout(x);
   PTT_PTT4 = 0;
@@ -348,13 +345,13 @@ void send_byte(char x) {
   lcdwait();
 }
 
-/* send_i: Sends instruction byte x to LCD */
+/* Sends instruction byte x to LCD */
 void send_i(char x) {
   PTT_PTT2 = 0; // set the register select line low (instruction data)
   send_byte(x);
 }
 
-/* chgline: Move LCD cursor to position x */
+/* Move LCD cursor to position x */
 void chgline(char x) {
 	send_i(CURMOV);
 	send_i(x);
@@ -401,7 +398,7 @@ void calibrate_motor(void) {
   TIE = 0x80;
 }
 
-/* One Step with Delay */
+/* One step with delay */
 void one_step(int delay) {
   PTT_PTT1 = 1;
   delay_10us(delay);
