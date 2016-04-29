@@ -190,18 +190,13 @@ void main(void) {
 	EnableInterrupts;
   //reset_motor();
   curpos = 3000;
-  dest_switch = 1;
-  state = 3;
 
   for(;;) {
+    all_zero = 1;
+    set_speed();
+    sample_switches();
+    if (all_zero) sample_sensors();
     disp();
-    /*
-      all_zero = 1;
-      set_speed();
-      sample_switches();
-      if (all_zero) sample_sensors();
-      disp();
-      }*/
   }
 }
 
@@ -251,9 +246,9 @@ void sample_switches(void) {
   int i;
   state = 0;
   for (i = 0; i < 8; i++) {
-    PTAD_PTAD5 = i & 0b100;
-    PTAD_PTAD6 = i & 0b010;
-    PTAD_PTAD7 = i & 0b001;
+    PTAD_PTAD5 = (i & 4) >> 2;
+    PTAD_PTAD6 = (i & 2) >> 1;
+    PTAD_PTAD7 = (i & 1) >> 0;
 
     if (PTT_PTT7) {
       state |= 1 << i;
@@ -269,9 +264,9 @@ void sample_switches(void) {
 void sample_sensors(void) {
   int i;
   for (i = 0; i < 8; i++) {
-    PTAD_PTAD2 = i & 0b100;
-    PTAD_PTAD3 = i & 0b010;
-    PTAD_PTAD4 = i & 0b001;
+    PTAD_PTAD2 = (i & 4) >> 2;
+    PTAD_PTAD3 = (i & 2) >> 1;
+    PTAD_PTAD4 = (i & 1) >> 0;
 
     if (PTAD_PTAD0) update_destination(sensor[i] + OFFSET);
     if (PTAD_PTAD1) update_destination(sensor[i + 8] + OFFSET);
