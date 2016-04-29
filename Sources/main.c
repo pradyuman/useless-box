@@ -79,7 +79,8 @@ void send_i(char x);
 void chgline(char x);
 void print_c(char x);
 void pmsglcd(char[]);
-void reset_motor(void);
+void calibrate_motor(void);
+void one_step(int delay);
 void delay_10us(int);
 
 /*  Variable declarations */
@@ -190,13 +191,11 @@ void main(void) {
   DisableInterrupts;
 	initializations();
 	EnableInterrupts;
-  //reset_motor();
-  curpos = 3000;
-  TIE = 0x80;
+  calibrate_motor();
 
   for(;;) {
     all_zero = 1;
-    //set_speed();
+    // set_speed();
     sample_switches();
     if (all_zero) sample_sensors();
     //if (!display--) disp();
@@ -241,9 +240,8 @@ void servo_driver(void) {
   PWMDTY2 = 0x09; //0x0A;
   PWMDTY3 = 0xF6; //0x28;
   for (i = 0; i < 100; i++) delay_10us(100);
-  sample_switches();
-  PWMDTY2 = all_zero ? 0x02 : 0x08;
-  PWMDTY3 = all_zero ? 0xEE : 0xCA;
+  PWMDTY2 = !--sum ? 0x02 : 0x08;
+  PWMDTY3 = !sum ? 0xEE : 0xCA;
   for (i = 0; i < 100; i++) delay_10us(100);
 }
 
@@ -289,7 +287,7 @@ void sample_sensors(void) {
 void set_speed(void) {
   ATDCTL5 = 0x10;
   while(!ATDSTAT0_SCF);
-  TC7 = 720 * ATDDR0H / 255;
+  TC7 = 720 + ATDDR0H * 2280 / 255;
 }
 
 /* Update Destination */
@@ -307,11 +305,6 @@ void update_destination(long loc) {
     if (newdiff < 0) newdiff *= -1;
     if (diff >= newdiff) despos = loc;
   }
-}
-
-/* Clears reset flag */
-interrupt 6 void IRQ_ISR(void) {
-  reset = 0;
 }
 
 /* Display to LCD */
@@ -380,41 +373,41 @@ void pmsglcd(char str[]) {
 	while(str[i] != '\0') print_c(str[i++]);
 }
 
-/* Reset motor to rest near calibration button */
-void reset_motor(void) {
+/* Clears reset flag */
+interrupt 6 void IRQ_ISR(void) {
+  reset = 0;
+  INTCR = 0x00;
+}
+
+/* Calibrate motor to rest near calibration button */
+void calibrate_motor(void) {
   int i;
   TIE = 0x00;
   INTCR = 0x40;
 
   reset = 1;
   PTT_PTT6 = 1;
-  while (reset) {
-    PTT_PTT1 = 1;
-    delay_10us(5);
-    PTT_PTT1 = 0;
-    delay_10us(5);
-  }
+  while (reset) one_step(5);
 
   PTT_PTT6 = 0;
-  for (i = 0; i < 3200; i++) {
-    PTT_PTT1 = 1;
-    delay_10us(5);
-    PTT_PTT1 = 0;
-    delay_10us(5);
-  }
+  for (i = 0; i < 1000; i++) one_step(5);
 
+  INTCR = 0x40;
   reset = 1;
   PTT_PTT6 = 1;
-  while (reset) {
-    PTT_PTT1 = 1;
-    delay_10us(50);
-    PTT_PTT1 = 0;
-    delay_10us(50);
-  }
+  while (reset) one_step(50);
 
+  despos = sw[0];
   INTCR = 0x00;
-  curpos = 0;
   TIE = 0x80;
+}
+
+/* One Step with Delay */
+void one_step(int delay) {
+  PTT_PTT1 = 1;
+  delay_10us(delay);
+  PTT_PTT1 = 0;
+  delay_10us(delay);
 }
 
 /* Delay around 10us */
