@@ -201,7 +201,6 @@ void main(void) {
   }
 }
 
-
 /* Step Motor Driver */
 interrupt 15 void TIM_ISR(void) {
   if (curpos != despos && !all_zero) {
@@ -356,7 +355,7 @@ void send_i(char x) {
 
 /* Move LCD cursor to position x */
 void chgline(char x) {
-	send_i(CURMOV);
+  send_i(CURMOV);
 	send_i(x);
 }
 
