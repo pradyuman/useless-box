@@ -68,6 +68,7 @@ Date: < ? >  Name: < ? >   Update: < ? >
 /* User Defined Functions */
 void sample_switches(void);
 void sample_sensors(void);
+void set_speed(void);
 void update_destination(long location);
 void servo_driver(void);
 void disp(void);
@@ -137,6 +138,11 @@ void initializations(void) {
   TIE = 0x00; //set up channel 7 to generate 30 us interrupt rate
   TC7 = 720; //initially disable TIM Ch 7 interrupts
 
+  //Initialize ATD module
+  ATDCTL2 = 0x80;
+  ATDCTL3 = 0x10;
+  ATDCTL4 = 0x85;
+
   /*
     Initialize the PWM unit to produce a signal with the following
     characteristics on PWM output channel 3:
@@ -172,14 +178,13 @@ void initializations(void) {
   send_i(LCDCLR);
   lcdwait();
 
-  INTCR = 0x00; // Disable Enable IRQ interrupts
+  INTCR = 0x00; // Disable IRQ interrupts
 
   PTT_PTT5 = 0; // Enable motor
 }
 
 /* Main */
 void main(void) {
-  int i;
   DisableInterrupts;
 	initializations();
 	EnableInterrupts;
@@ -190,15 +195,14 @@ void main(void) {
 
   for(;;) {
     disp();
-  }/*
-
-  all_zero = 1;
-  sample_switches();
-  if (all_zero) sample_sensors();
-  disp();
-
-  disp();
-  }*/
+    /*
+      all_zero = 1;
+      set_speed();
+      sample_switches();
+      if (all_zero) sample_sensors();
+      disp();
+      }*/
+  }
 }
 
 
@@ -217,11 +221,8 @@ interrupt 15 void TIM_ISR(void) {
 
     PTT_PTT1 = !PTT_PTT1;
 
-    if (PTT_PTT6) {
-      curpos -= PTT_PTT1;
-    } else {
-      curpos += PTT_PTT1;
-    }
+    if (PTT_PTT6) curpos -= PTT_PTT1;
+    else curpos += PTT_PTT1;
   } else if (!all_zero && fservo) {
     servo_driver();
   } else if (wait < 40000) {
@@ -276,6 +277,13 @@ void sample_sensors(void) {
     if (PTAD_PTAD1) update_destination(sensor[i + 8] + OFFSET);
     fservo = 1;
   }
+}
+
+/* Set Speed of Step Motor */
+void set_speed(void) {
+  ATDCTL5 = 0x10;
+  while(!ATDSTAT0_SCF);
+  TC7 = 720 * ATDDR0H / 255;
 }
 
 /* Update Destination */
