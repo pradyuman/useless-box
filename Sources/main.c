@@ -5,17 +5,17 @@ ECE 362 - Mini-Project C Source File - Spring 2016
 
 Team ID: < 01 >
 
-Project Name: < TAPS >
+Project Name: < TAPS Useless Box >
 
 Team Members:
 
-- Team/Doc Leader: < Tiger Cheng >       Signature: ______________________
+- Team/Doc Leader: < Tiger Cheng >       Signature: Tiger Cheng
 
-- Software Leader: < Pradyuman Vig >     Signature: ______________________
+- Software Leader: < Pradyuman Vig >     Signature: Pradyuman Vig
 
-- Interface Leader: < Annan Ma >         Signature: ______________________
+- Interface Leader: < Annan Ma >         Signature: Annan Ma
 
-- Peripheral Leader: < Shichen Lin >     Signature: ______________________
+- Peripheral Leader: < Shichen Lin >     Signature: Shichen Lin
 
 
 Academic Honesty Statement:  In signing above, we hereby certify that we
@@ -26,23 +26,23 @@ a grade of ZERO and be subject to possible disciplinary action.
 
 ***********************************************************************
 
-The objective of this Mini-Project is to .... < ? >
-
+The objective of this Mini-Project is to make a device that flips
+any switches that the user flips.
 
 ***********************************************************************
 
 List of project-specific success criteria (functionality that will be
 demonstrated):
 
-1.
+1. The system can drive a step motor
 
-2.
+2. The system can drive a servo
 
-3.
+3. The system can flip a switch.
 
-4.
+4. The system will accurately prioritize the closest switch when multiple switches are flipped.
 
-5.
+5. The system will not attempt to flip any switches that are flipped and then reset by the user.
 
 ***********************************************************************
 
@@ -50,11 +50,8 @@ Date code started: < 4/23/2016 >
 
 Update history (add an entry every time a significant change is made):
 
-Date: < ? >  Name: < ? >   Update: < ? >
-
-Date: < ? >  Name: < ? >   Update: < ? >
-
-Date: < ? >  Name: < ? >   Update: < ? >
+Update history can be found via github commits at the following link:
+https://github.com/pradyuman/useless-box/commits/master
 
 
 ***********************************************************************
@@ -199,7 +196,7 @@ void main(void) {
     all_zero = 1;
     set_speed();
     sample_switches();
-    //if (all_zero) sample_sensors();
+    if (all_zero) sample_sensors();
     display();
   }
 }
@@ -248,7 +245,7 @@ void servo_driver(void) {
 
 /* Switch sampling */
 void sample_switches(void) {
-  int i,dis;
+  int i;
   state = 0;
   sum = 0;
   dest_switch = 0;
