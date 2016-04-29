@@ -86,9 +86,9 @@ long despos;
 long curpos;
 int all_zero = 1;
 long wait = 0;
-char prevdir = 0;
-char reset = 1;
-char fservo = 0;
+int prevdir = 0;
+int reset = 1;
+int fservo = 0;
 int dest_switch = 0;
 
 /* USELESS BOX PARAMETERS TO SAVE CPU CYCLES */
@@ -161,73 +161,57 @@ void initializations(void) {
 	PWMPRCLK = 0x40; // set Clock B Prescalar = 1.5 MHz (prescaler = 16) rate
   // needs to count to 15000 for 100 Hz **??
 
-  /* SPI setting and LCD initialization*/
-  SPICR1 = 0x50;
-  SPICR2 = 0;
-  SPIBR = 1;
-  PTT_PTT0 = 0;
-  PTT_PTT4 = 1;
-  send_i(LCDON);
-  send_i(TWOLINE);
-  send_i(LCDCLR);
-  lcdwait();
-
   INTCR = 0x00; // Disable Enable IRQ interrupts
 
-  PTT_PTT5 = 0; // Enable motor
+  PTT_PTT6 = 1; // Enable motor
 }
 
 /* Main */
 void main(void) {
-  int i;
   DisableInterrupts;
 	initializations();
 	EnableInterrupts;
   //reset_motor();
-  curpos = 3000;
-  dest_switch = 1;
-  state = 3;
 
+  servo_driver();
   for(;;) {
-    disp();
-  }/*
-
-  all_zero = 1;
-  sample_switches();
-  if (all_zero) sample_sensors();
-  disp();
-
-  disp();
-  }*/
+    /*
+      all_zero = 1;
+      sample_switches();
+      if (all_zero) sample_sensors();
+      disp();
+    */
+  }
 }
 
 
 /* Step Motor Driver */
 interrupt 15 void TIM_ISR(void) {
   if (curpos != despos) {
-    PTT_PTT6 = curpos < despos ? 0 : 1;
+    PTT_PTT5 = curpos < despos ? 0 : 1;
 
-    if (prevdir != PTT_PTT6) {
+    if (prevdir != PTT_PTT5) {
       if (wait++ >= 40000) {
         wait = 0;
-        prevdir = PTT_PTT6;
+        prevdir = PTT_PTT5;
       }
       return;
     }
 
     PTT_PTT1 = !PTT_PTT1;
 
-    if (PTT_PTT6) {
+    if (PTT_PTT5) {
       curpos -= PTT_PTT1;
     } else {
       curpos += PTT_PTT1;
     }
-  } else if (!all_zero && fservo) {
-    servo_driver();
-  } else if (wait < 40000) {
-    wait++;
-  }
-
+  } else (wait++ < 40000);
+  /*
+    {
+    } else (!all_zero && fservo) {
+    // servo_driver();
+    }
+  */
   // clear TIM CH 7 interrupt flag
   TFLG1 |= 0x80;
 }
@@ -238,8 +222,8 @@ void servo_driver(void) {
   fservo = 0;
   PWMDTY2 = 0x09; //0x0A;
   PWMDTY3 = 0xF6; //0x28;
-  for (i = 0; i < 100; i++) delay_10us(100);
-  sample_switches();
+  //sample_switches();
+  for (i = 0; i < 100; i++) delay_10us(1000);
   PWMDTY2 = all_zero ? 0x02 : 0x08;
   PWMDTY3 = all_zero ? 0xEE : 0xCA;
   for (i = 0; i < 100; i++) delay_10us(1000);
@@ -274,7 +258,6 @@ void sample_sensors(void) {
 
     if (PTAD_PTAD0) update_destination(sensor[i] + OFFSET);
     if (PTAD_PTAD1) update_destination(sensor[i + 8] + OFFSET);
-    fservo = 1;
   }
 }
 
@@ -366,11 +349,11 @@ void pmsglcd(char str[]) {
 /* Reset motor to rest near calibration button */
 void reset_motor(void) {
   int i;
-  TIE = 0x00;
   INTCR = 0x40;
+  TIE = 0x00;
 
   reset = 1;
-  PTT_PTT6 = 1;
+  PTT_PTT5 = 1;
   while (reset) {
     PTT_PTT1 = 1;
     delay_10us(5);
@@ -378,7 +361,7 @@ void reset_motor(void) {
     delay_10us(5);
   }
 
-  PTT_PTT6 = 0;
+  PTT_PTT5 = 0;
   for (i = 0; i < 3200; i++) {
     PTT_PTT1 = 1;
     delay_10us(5);
@@ -387,7 +370,7 @@ void reset_motor(void) {
   }
 
   reset = 1;
-  PTT_PTT6 = 1;
+  PTT_PTT5 = 1;
   while (reset) {
     PTT_PTT1 = 1;
     delay_10us(50);
@@ -396,13 +379,12 @@ void reset_motor(void) {
   }
 
   INTCR = 0x00;
-  curpos = 0;
   TIE = 0x80;
+  curpos = 0;
 }
 
 /* Delay around 10us */
 void delay_10us(int time) {
   int i;
-  long loopnum = 18 * time;
-  for(i = 0; i < loopnum; i++);
+  for(i = 0; i < 18 * time; i++);
 }
