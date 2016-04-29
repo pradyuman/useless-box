@@ -356,19 +356,19 @@ void send_i(char x) {
 /* Move LCD cursor to position x */
 void chgline(char x) {
   send_i(CURMOV);
-	send_i(x);
+  send_i(x);
 }
 
 /* Print (single) character x on LCD */
 void print_c(char x) {
-	PTT_PTT2 = 1;
-	send_byte(x);
+  PTT_PTT2 = 1;
+  send_byte(x);
 }
 
 /* Print character string str[] on LCD */
 void pmsglcd(char str[]) {
-	int i = 0;
-	while(str[i] != '\0') print_c(str[i++]);
+  int i = 0;
+  while(str[i] != '\0') print_c(str[i++]);
 }
 
 /* Clears reset flag */
